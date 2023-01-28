@@ -22,6 +22,8 @@ import re
 
 class Node(object):
     """ Abstact class for every element in parser """
+    # attr_names = ()  # type: Tuple
+    attr_names = ()
 
     def children(self):
         pass
@@ -246,7 +248,7 @@ class Value(Node):
 
 
 class Constant(Value):
-    attr_names = ('value',)
+    attr_names = ('value',)  # type: ignore
 
     def __init__(self, value, lineno=0):
         self.lineno = lineno
@@ -273,7 +275,7 @@ class StringConst(Constant):
 
 
 class Variable(Value):
-    attr_names = ('name', 'signed')
+    attr_names = ('name', 'signed')  # type: ignore
 
     def __init__(self, name, width=None, signed=False, dimensions=None, value=None, lineno=0):
         self.lineno = lineno
@@ -370,6 +372,8 @@ class Parameter(Node):
 class Localparam(Parameter):
     pass
 
+class Defparam(Parameter):
+    pass
 
 class Supply(Parameter):
     pass
@@ -527,6 +531,8 @@ class UnaryOperator(Operator):
             nodelist.append(self.right)
         return tuple(nodelist)
 
+class BinaryOperator(Operator):
+    pass
 
 # Level 1 (Highest Priority)
 class Uplus(UnaryOperator):
@@ -570,107 +576,103 @@ class Uxnor(UnaryOperator):
 
 
 # Level 2
-class Power(Operator):
+class Power(BinaryOperator):
     pass
 
 
-class Times(Operator):
+class Times(BinaryOperator):
     pass
 
 
-class Divide(Operator):
+class Divide(BinaryOperator):
     pass
 
 
-class Mod(Operator):
+class Mod(BinaryOperator):
     pass
 
 
 # Level 3
-class Plus(Operator):
+class Plus(BinaryOperator):
     pass
 
 
-class Minus(Operator):
+class Minus(BinaryOperator):
     pass
 
 
 # Level 4
-class Sll(Operator):
+class Sll(BinaryOperator):
     pass
 
 
-class Srl(Operator):
+class Srl(BinaryOperator):
     pass
 
 
-class Sla(Operator):
-    pass
-
-
-class Sra(Operator):
+class Sra(BinaryOperator):
     pass
 
 
 # Level 5
-class LessThan(Operator):
+class LessThan(BinaryOperator):
     pass
 
 
-class GreaterThan(Operator):
+class GreaterThan(BinaryOperator):
     pass
 
 
-class LessEq(Operator):
+class LessEq(BinaryOperator):
     pass
 
 
-class GreaterEq(Operator):
+class GreaterEq(BinaryOperator):
     pass
 
 
 # Level 6
-class Eq(Operator):
+class Eq(BinaryOperator):
     pass
 
 
-class NotEq(Operator):
+class NotEq(BinaryOperator):
     pass
 
 
-class Eql(Operator):
+class Eql(BinaryOperator):
     pass  # ===
 
 
-class NotEql(Operator):
+class NotEql(BinaryOperator):
     pass  # !==
 
 
 # Level 7
-class And(Operator):
+class And(BinaryOperator):
     pass
 
 
-class Xor(Operator):
+class Xor(BinaryOperator):
     pass
 
 
-class Xnor(Operator):
+class Xnor(BinaryOperator):
     pass
 
 
 # Level 8
-class Or(Operator):
+class Or(BinaryOperator):
     pass
 
 
 # Level 9
-class Land(Operator):
+class Land(BinaryOperator):
     pass
 
 
 # Level 10
-class Lor(Operator):
+class Lor(BinaryOperator):
     pass
 
 
@@ -1074,9 +1076,11 @@ class PortArg(Node):
 class Function(Node):
     attr_names = ('name',)
 
-    def __init__(self, name, retwidth, statement, lineno=0):
+    def __init__(self, name, retwidth=None, statement=None, typename=None, automatic=False, lineno=0):
         self.lineno = lineno
         self.name = name
+        self.typename = typename
+        self.automatic = bool(automatic)
         self.retwidth = retwidth
         self.statement = statement
 
@@ -1286,6 +1290,7 @@ class EmbeddedCode(Node):
 
     def __init__(self, code, lineno=0):
         self.code = code
+        self.lineno = lineno
 
     def children(self):
         nodelist = []

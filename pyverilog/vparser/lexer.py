@@ -20,7 +20,8 @@ import sys
 import os
 import re
 
-from ply.lex import *
+from ply.lex import lex
+from ply.lex import TOKEN
 
 
 class VerilogLexer(object):
@@ -38,13 +39,13 @@ class VerilogLexer(object):
     def input(self, data):
         self.lexer.input(data)
 
-    def reset_lineno(self):
+    def reset_lineno(self):  # todo_cov
         self.lexer.lineno = 1
 
-    def get_directives(self):
+    def get_directives(self):  # todo_cov
         return tuple(self.directives)
 
-    def get_default_nettype(self):
+    def get_default_nettype(self):  # todo_cov
         return self.default_nettype
 
     def token(self):
@@ -54,10 +55,11 @@ class VerilogLexer(object):
         'MODULE', 'ENDMODULE', 'BEGIN', 'END', 'GENERATE', 'ENDGENERATE', 'GENVAR',
         'FUNCTION', 'ENDFUNCTION', 'TASK', 'ENDTASK',
         'INPUT', 'INOUT', 'OUTPUT', 'TRI', 'REG', 'LOGIC', 'WIRE', 'INTEGER', 'REAL', 'SIGNED',
-        'PARAMETER', 'LOCALPARAM', 'SUPPLY0', 'SUPPLY1',
+        'PARAMETER', 'LOCALPARAM', 'DEFPARAM', 'SUPPLY0', 'SUPPLY1',
         'ASSIGN', 'ALWAYS', 'ALWAYS_FF', 'ALWAYS_COMB', 'ALWAYS_LATCH', 'SENS_OR', 'POSEDGE', 'NEGEDGE', 'INITIAL',
         'IF', 'ELSE', 'FOR', 'WHILE', 'CASE', 'CASEX', 'CASEZ', 'UNIQUE', 'ENDCASE', 'DEFAULT',
         'WAIT', 'FOREVER', 'DISABLE', 'FORK', 'JOIN',
+        'AUTOMATIC',
     )
 
     reserved = {}
@@ -88,6 +90,7 @@ class VerilogLexer(object):
         'INTNUMBER_BIN', 'SIGNED_INTNUMBER_BIN',
         'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE',
         'DELAY', 'DOLLER',
+        'REALTIME', 'TIME',
     )
 
     skipped = (
@@ -104,10 +107,9 @@ class VerilogLexer(object):
     def t_DIRECTIVE(self, t):
         self.directives.append((self.lexer.lineno, t.value))
         t.lexer.lineno += t.value.count("\n")
-        m = re.match("^`default_nettype\s+(.+)\n", t.value)
+        m = re.match(r"^`default_nettype\s+(.+)\n", t.value)
         if m:
             self.default_nettype = m.group(1)
-        pass
 
     # Comment
     linecomment = r"""//.*?\n"""
@@ -116,25 +118,23 @@ class VerilogLexer(object):
     @TOKEN(linecomment)
     def t_LINECOMMENT(self, t):
         t.lexer.lineno += t.value.count("\n")
-        pass
 
     @TOKEN(commentout)
     def t_COMMENTOUT(self, t):
         t.lexer.lineno += t.value.count("\n")
-        pass
 
     # Operator
-    t_LOR = r'\|\|'
+    t_LOR  = r'\|\|'
     t_LAND = r'\&\&'
 
-    t_NOR = r'~\|'
+    t_NOR  = r'~\|'
     t_NAND = r'~\&'
     t_XNOR = r'~\^'
-    t_OR = r'\|'
-    t_AND = r'\&'
-    t_XOR = r'\^'
+    t_OR   = r'\|'
+    t_AND  = r'\&'
+    t_XOR  = r'\^'
     t_LNOT = r'!'
-    t_NOT = r'~'
+    t_NOT  = r'~'
 
     t_LSHIFTA = r'<<<'
     t_RSHIFTA = r'>>>'
@@ -151,14 +151,14 @@ class VerilogLexer(object):
     t_LT = r'<'
     t_GT = r'>'
 
-    t_POWER = r'\*\*'
-    t_PLUS = r'\+'
-    t_MINUS = r'-'
-    t_TIMES = r'\*'
+    t_POWER  = r'\*\*'
+    t_PLUS   = r'\+'
+    t_MINUS  = r'-'
+    t_TIMES  = r'\*'
     t_DIVIDE = r'/'
-    t_MOD = r'%'
+    t_MOD    = r'%'
 
-    t_COND = r'\?'
+    t_COND   = r'\?'
     t_EQUALS = r'='
 
     t_PLUSCOLON = r'\+:'
@@ -191,9 +191,9 @@ class VerilogLexer(object):
     signed_decimal_number = '[0-9]*\'[sS][dD][0-9xXzZ?][0-9xXzZ?_]*'
 
     exponent_part = r"""([eE][-+]?[0-9]+)"""
-    fractional_constant = r"""([0-9]*\.[0-9]+)|([0-9]+\.)"""
+    fractional_constant = r"""([0-9][0-9_]*\.[0-9_]+)|([0-9][0-9_]*\.)"""
     float_number = '((((' + fractional_constant + ')' + \
-        exponent_part + '?)|([0-9]+' + exponent_part + ')))'
+        exponent_part + '?)|([0-9][0-9_]*' + exponent_part + ')))'
 
     simple_escape = r"""([a-zA-Z\\?'"])"""
     octal_escape = r"""([0-7]{1,3})"""
@@ -252,18 +252,17 @@ class VerilogLexer(object):
     def t_NEWLINE(self, t):
         r'\n+'
         t.lexer.lineno += t.value.count("\n")
-        pass
 
-    def t_error(self, t):
+    def t_error(self, t):  # no_cov
         msg = 'Illegal character %s' % repr(t.value[0])
         self._error(msg, t)
 
-    def _error(self, msg, token):
+    def _error(self, msg, token):  # no_cov
         location = self._make_tok_location(token)
         self.error_func(msg, location[0], location[1])
         self.lexer.skip(1)
 
-    def _find_tok_column(self, token):
+    def _find_tok_column(self, token):  # no_cov
         i = token.lexpos
         while i > 0:
             if self.lexer.lexdata[i] == '\n':
@@ -271,11 +270,11 @@ class VerilogLexer(object):
             i -= 1
         return (token.lexpos - i) + 1
 
-    def _make_tok_location(self, token):
+    def _make_tok_location(self, token):  # no_cov
         return (token.lineno, self._find_tok_column(token))
 
 
-def dump_tokens(text):
+def dump_tokens(text):  # no_cov
     def my_error_func(msg, a, b):
         sys.write(msg + "\n")
         sys.exit()
@@ -291,7 +290,8 @@ def dump_tokens(text):
         tok = lexer.token()
         if not tok:
             break  # No more input
-        ret.append("%s %s %d %s %d\n" %
-                   (tok.value, tok.type, tok.lineno, lexer.filename, tok.lexpos))
+        ret.append(
+            "%s %s %d %s %d\n" %
+            (tok.value, tok.type, tok.lineno, lexer.filename, tok.lexpos))
 
     return ''.join(ret)
